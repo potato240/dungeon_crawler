@@ -19,6 +19,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashTimer = 0;
     this.dashCooldown = 0;
     this.dashTrailTimer = 0;
+    this.postDashGrace = 0;
     this.facing = { x: 1, y: 0 };
 
     this.cursors = scene.input.keyboard.createCursorKeys();
@@ -33,6 +34,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.attackCooldown > 0) this.attackCooldown -= dt;
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
     if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
+    if (this.postDashGrace > 0) this.postDashGrace -= dt;
 
     // During dash: maintain velocity, spawn trail, then end
     if (this.dashing) {
@@ -48,6 +50,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       }
       if (this.dashTimer <= 0) {
         this.dashing = false;
+        this.postDashGrace = 0.12;
         this.setTint(0xffffff);
       }
       return;

@@ -121,7 +121,7 @@ class GameScene extends Phaser.Scene {
     // Pit check
     const currentTile = this.groundLayer?.getTileAtWorldXY(this.player.x, this.player.y);
     if (currentTile) {
-      if (currentTile.index === CONFIG.TILES.PIT && !this.player.dashing) {
+      if (currentTile.index === CONFIG.TILES.PIT && !this.player.dashing && this.player.postDashGrace <= 0) {
         this.player.takeDamage(20);
         this.player.setPosition(this._lastSafeX, this._lastSafeY);
         this.player.setVelocity(0, 0);
