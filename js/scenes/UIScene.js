@@ -1,0 +1,80 @@
+class UIScene extends Phaser.Scene {
+  constructor() { super({ key: 'UI', active: false }); }
+
+  create() {
+    const W = this.cameras.main.width;
+
+    // Floor label
+    this.floorLabel = this.add.text(10, 8, 'Floor 1', {
+      fontSize: '13px', fontFamily: 'monospace',
+      color: '#ffffff', stroke: '#000000', strokeThickness: 3,
+    }).setScrollFactor(0).setDepth(100);
+
+    // HP bar background + fill
+    this.hpBarBg = this.add.graphics().setDepth(100);
+    this.hpBarFg = this.add.graphics().setDepth(101);
+    this._drawHpBar(1);
+
+    // Stats text
+    this.statsText = this.add.text(10, 48, '', {
+      fontSize: '10px', fontFamily: 'monospace',
+      color: '#cccccc', stroke: '#000000', strokeThickness: 2,
+    }).setScrollFactor(0).setDepth(100);
+
+    // Message bar at bottom
+    this.msgText = this.add.text(W / 2, this.cameras.main.height - 8, '', {
+      fontSize: '11px', fontFamily: 'monospace',
+      color: '#ffee77', stroke: '#000000', strokeThickness: 3,
+      align: 'center', wordWrap: { width: W - 20 },
+    }).setOrigin(0.5, 1).setScrollFactor(0).setDepth(100).setAlpha(0);
+
+    this.msgTween = null;
+
+    // Wire up game events
+    const game = this.scene.get('Game');
+    game.events.on('update-ui',      this._onUpdateUi,     this);
+    game.events.on('player-hurt',    this._onPlayerHurt,   this);
+    game.events.on('player-healed',  this._onPlayerHealed, this);
+    game.events.on('floor-changed',  this._onFloorChanged, this);
+    game.events.on('show-message',   this._onShowMessage,  this);
+  }
+
+  _drawHpBar(frac) {
+    const bx = 10, by = 26, bw = 140, bh = 12;
+    this.hpBarBg.clear();
+    this.hpBarBg.fillStyle(0x000000, 0.75);
+    this.hpBarBg.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    this.hpBarBg.fillStyle(0x440000);
+    this.hpBarBg.fillRect(bx, by, bw, bh);
+
+    this.hpBarFg.clear();
+    const color = frac > 0.5 ? 0x44cc44 : frac > 0.25 ? 0xccaa00 : 0xcc2222;
+    this.hpBarFg.fillStyle(color);
+    this.hpBarFg.fillRect(bx, by, Math.max(0, bw * frac), bh);
+  }
+
+  _onUpdateUi(player) {
+    if (!player) return;
+    const frac = player.hp / player.maxHp;
+    this._drawHpBar(frac);
+    this.statsText.setText(`HP ${player.hp}/${player.maxHp}   ATK ${player.attack}   DEF ${player.defense}`);
+  }
+
+  _onPlayerHurt(player) { this._onUpdateUi(player); }
+  _onPlayerHealed(player) { this._onUpdateUi(player); }
+
+  _onFloorChanged(floor) {
+    this.floorLabel.setText(`Floor ${floor}`);
+  }
+
+  _onShowMessage(msg) {
+    if (this.msgTween) this.msgTween.stop();
+    this.msgText.setText(msg).setAlpha(1);
+    this.msgTween = this.tweens.add({
+      targets: this.msgText,
+      alpha: 0,
+      delay: 2800,
+      duration: 600,
+    });
+  }
+}
