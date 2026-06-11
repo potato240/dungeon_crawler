@@ -219,10 +219,8 @@ class GameScene extends Phaser.Scene {
     this.dungeonData.rooms.forEach(room => {
       if (!room.hazard) return;
       const gfx = this.add.graphics().setDepth(1);
-      gfx.fillStyle(colors[room.hazard], 0.07);
+      gfx.fillStyle(colors[room.hazard], 0.08);
       gfx.fillRect(room.x * T, room.y * T, room.w * T, room.h * T);
-      gfx.lineStyle(1, colors[room.hazard], 0.3);
-      gfx.strokeRect(room.x * T, room.y * T, room.w * T, room.h * T);
     });
   }
 
