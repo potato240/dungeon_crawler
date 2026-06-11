@@ -188,6 +188,48 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  showDashAttackEffect(x, y, radius) {
+    // Expanding ring
+    const ring = this.add.graphics().setDepth(30);
+    ring.lineStyle(3, 0x88ccff, 1);
+    ring.strokeCircle(x, y, 4);
+
+    // Slash lines radiating outward
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const line = this.add.graphics().setDepth(30);
+      line.lineStyle(2, 0xffffff, 0.9);
+      line.lineBetween(
+        x + Math.cos(angle) * 8,  y + Math.sin(angle) * 8,
+        x + Math.cos(angle) * radius * 0.8, y + Math.sin(angle) * radius * 0.8
+      );
+      this.tweens.add({
+        targets: line, alpha: 0, duration: 280,
+        onComplete: () => line.destroy(),
+      });
+    }
+
+    this.tweens.add({
+      targets: ring,
+      scaleX: radius / 4, scaleY: radius / 4,
+      alpha: 0,
+      duration: 320,
+      ease: 'Quad.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+
+    // Shockwave flash
+    const flash = this.add.graphics().setDepth(29);
+    flash.fillStyle(0x88ccff, 0.35);
+    flash.fillCircle(x, y, radius);
+    this.tweens.add({
+      targets: flash, alpha: 0, duration: 200,
+      onComplete: () => flash.destroy(),
+    });
+
+    this.cameras.main.shake(120, 0.007);
+  }
+
   showAttackEffect(x, y) {
     const fx = this.add.image(x, y, 'attack_fx').setDepth(30).setAlpha(0.85);
     this.tweens.add({

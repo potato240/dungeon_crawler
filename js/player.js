@@ -42,6 +42,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.dashTrailTimer = 0.03;
         this._spawnTrail();
       }
+      if (Phaser.Input.Keyboard.JustDown(this.attackKey)) {
+        this._doDashAttack();
+        return;
+      }
       if (this.dashTimer <= 0) {
         this.dashing = false;
         this.setTint(0xffffff);
@@ -67,8 +71,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       this._doDash();
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.attackKey) && this.attackCooldown <= 0) {
-      this._doAttack();
+    if (Phaser.Input.Keyboard.JustDown(this.attackKey)) {
+      if (this.attackCooldown <= 0) this._doAttack();
     }
   }
 
@@ -84,6 +88,36 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     const len = Math.sqrt(fx * fx + fy * fy) || 1;
     this.setVelocity((fx / len) * CONFIG.PLAYER.DASH_SPEED, (fy / len) * CONFIG.PLAYER.DASH_SPEED);
     this.setTint(0xaaddff);
+  }
+
+  _doDashAttack() {
+    // Cancel dash, enter attack cooldown
+    this.dashing = false;
+    this.dashTimer = 0;
+    this.attackCooldown = 0.6;
+    this.setTint(0xffffff);
+    this.setVelocity(0, 0);
+
+    const radius = 48;
+    this.scene.showDashAttackEffect(this.x, this.y, radius);
+
+    this.scene.enemies.getChildren().forEach(enemy => {
+      if (!enemy.active) return;
+      const dx = enemy.x - this.x;
+      const dy = enemy.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < radius) {
+        enemy.takeDamage(this.attack * 2);
+        // Knockback
+        if (dist > 0) {
+          const nx = dx / dist, ny = dy / dist;
+          enemy.setVelocity(nx * 260, ny * 260);
+          this.scene.time.delayedCall(200, () => {
+            if (enemy.active) enemy.setVelocity(0, 0);
+          });
+        }
+      }
+    });
   }
 
   _spawnTrail() {
