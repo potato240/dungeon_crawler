@@ -656,16 +656,38 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.007);
   }
 
-  showAttackEffect(x, y) {
-    const fx = this.add.image(x, y, 'attack_fx').setDepth(30).setAlpha(0.85);
-    this.tweens.add({
-      targets: fx,
-      alpha: 0,
-      scaleX: 2.2,
-      scaleY: 2.2,
-      duration: 180,
-      onComplete: () => fx.destroy(),
-    });
+  showAttackEffect(x, y, facingX, facingY) {
+    const angle = Math.atan2(facingY || 0, facingX || 1);
+    const spread = Math.PI * 0.55;
+    const r1 = 10, r2 = 26;
+
+    // Draw 3 slash arcs
+    for (let i = 0; i < 3; i++) {
+      const t = i / 2; // 0, 0.5, 1
+      const arcAngle = angle - spread / 2 + spread * t;
+      const gfx = this.add.graphics({ x, y }).setDepth(30);
+      gfx.lineStyle(2.5 - i * 0.5, i === 1 ? 0xffffff : 0xaaddff, 0.9 - i * 0.15);
+
+      // Slash: line from inner-left to outer-right across the arc angle
+      const a1 = arcAngle - spread * 0.3;
+      const a2 = arcAngle + spread * 0.3;
+
+      // Slash: line from (cos(a1)*r1, sin(a1)*r1) to (cos(a2)*r2, sin(a2)*r2)
+      gfx.lineBetween(
+        Math.cos(a1) * r1, Math.sin(a1) * r1,
+        Math.cos(a2) * r2, Math.sin(a2) * r2
+      );
+
+      this.tweens.add({
+        targets: gfx,
+        alpha: 0,
+        x: x + Math.cos(angle) * 6,
+        y: y + Math.sin(angle) * 6,
+        duration: 140 + i * 20,
+        ease: 'Quad.easeOut',
+        onComplete: () => gfx.destroy(),
+      });
+    }
   }
 
   showFloatingText(x, y, text, color) {
