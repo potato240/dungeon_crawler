@@ -7,7 +7,7 @@ new Phaser.Game({
     default: 'arcade',
     arcade: { gravity: { y: 0 }, debug: false },
   },
-  scene: [BootScene, GameScene, UIScene],
+  scene: [BootScene, ElementSelectScene, GameScene, UIScene],
   parent: 'game-container',
   pixelArt: true,
   scale: {

@@ -117,6 +117,52 @@ class BootScene extends Phaser.Scene {
     ag.generateTexture('attack_fx', 20, 20);
     ag.destroy();
 
-    this.scene.start('Game');
+    // Tornado super texture (32x32 vortex)
+    const tvg = this.make.graphics({ add: false });
+    tvg.fillStyle(0x446688); tvg.fillCircle(16, 16, 15);
+    tvg.fillStyle(0x334455); tvg.fillCircle(16, 16, 11);
+    tvg.fillStyle(0x223344); tvg.fillCircle(16, 16, 7);
+    tvg.fillStyle(0x112233); tvg.fillCircle(16, 16, 4);
+    // swirl arms
+    tvg.fillStyle(0x88aacc);
+    tvg.fillRect(15, 2,  3, 10);
+    tvg.fillRect(20, 15, 10, 3);
+    tvg.fillRect(13, 20, 3, 10);
+    tvg.fillRect(2,  13, 10, 3);
+    tvg.generateTexture('tornado_super', 32, 32);
+    tvg.destroy();
+
+    // Element icons (20x20 each)
+    const elDefs = [
+      ['AIR',       0x88ddff, (g) => { // wind swirl
+        g.fillStyle(0x88ddff); g.fillCircle(10, 10, 8);
+        g.fillStyle(0x223344); g.fillCircle(10, 10, 4);
+        g.fillStyle(0xaaeeff); g.fillRect(9, 1, 3, 7); g.fillRect(13, 9, 7, 3);
+      }],
+      ['FIRE',      0xff6622, (g) => { // flame
+        g.fillStyle(0xff2200); g.fillTriangle(10, 1, 2, 19, 18, 19);
+        g.fillStyle(0xff8800); g.fillTriangle(10, 5, 5, 17, 15, 17);
+        g.fillStyle(0xffcc00); g.fillCircle(10, 14, 4);
+      }],
+      ['ICE',       0x44aaff, (g) => { // crystal
+        g.fillStyle(0x44aaff); g.fillRect(9, 1, 3, 18); g.fillRect(1, 9, 18, 3);
+        g.fillStyle(0x88ccff); g.fillRect(4, 4, 3, 3); g.fillRect(13, 4, 3, 3);
+        g.fillRect(4, 13, 3, 3); g.fillRect(13, 13, 3, 3);
+        g.fillStyle(0xffffff); g.fillCircle(10, 10, 3);
+      }],
+      ['LIGHTNING', 0xffee22, (g) => { // bolt
+        g.fillStyle(0xffee22);
+        g.fillTriangle(13, 1, 6, 11, 11, 11);
+        g.fillTriangle(14, 9, 9, 19, 16, 9);
+      }],
+    ];
+    elDefs.forEach(([key, , draw]) => {
+      const eg2 = this.make.graphics({ add: false });
+      draw(eg2);
+      eg2.generateTexture(`element_${key}`, 20, 20);
+      eg2.destroy();
+    });
+
+    this.scene.start('ElementSelect');
   }
 }

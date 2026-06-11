@@ -13,6 +13,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.defense = 0;
     this.speed = CONFIG.PLAYER.SPEED;
 
+    this.charge = 0;
     this.attackCooldown = 0;
     this.invincibleTimer = 0;
     this.dashing = false;
@@ -112,6 +113,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       if (dist < radius) {
         enemy.takeDamage(this.attack * 2);
         if (!enemy.active) return; // died from the hit
+        this.addCharge(this.attack * 2);
         // Knockback
         if (dist > 0) {
           const nx = dx / dist, ny = dy / dist;
@@ -137,6 +139,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
+  addCharge(amount) {
+    this.charge = Math.min(CONFIG.CHARGE_REQUIRED, this.charge + amount);
+    this.scene.events.emit('charge-updated', this.charge);
+  }
+
   _doAttack() {
     this.attackCooldown = 0.45;
     const range = CONFIG.PLAYER.ATTACK_RANGE;
@@ -151,6 +158,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       const dy = enemy.y - cy;
       if (Math.sqrt(dx * dx + dy * dy) < range) {
         enemy.takeDamage(this.attack);
+        if (enemy.active) this.addCharge(this.attack);
       }
     });
   }

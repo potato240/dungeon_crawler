@@ -16,6 +16,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.speed = def.speed;
 
     this.state = 'idle';
+    this.frozen = false;
     this.moveTimer = Phaser.Math.FloatBetween(0, 2);
     this.attackTimer = 0;
     this.aggroRange = 90;
@@ -25,6 +26,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   update(time, delta) {
     if (!this.active) return;
+    if (this.frozen) { this.setVelocity(0, 0); return; }
     const dt = delta / 1000;
     if (this.attackTimer > 0) this.attackTimer -= dt;
     if (this.moveTimer > 0) this.moveTimer -= dt;

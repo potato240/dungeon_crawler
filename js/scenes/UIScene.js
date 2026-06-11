@@ -21,6 +21,24 @@ class UIScene extends Phaser.Scene {
       color: '#cccccc', stroke: '#000000', strokeThickness: 2,
     }).setScrollFactor(0).setDepth(100);
 
+    // Charge bar
+    this.chargeBg = this.add.graphics().setDepth(100);
+    this.chargeFg = this.add.graphics().setDepth(101);
+    this.chargeLabel = this.add.text(10, 68, 'Q', {
+      fontSize: '10px', fontFamily: 'monospace',
+      color: '#888888', stroke: '#000000', strokeThickness: 2,
+    }).setScrollFactor(0).setDepth(102);
+    this._drawChargeBar(0);
+
+    // Element icon in top-right
+    const element = this.scene.get('Game')?.registry?.get('element') || 'AIR';
+    const elDef = CONFIG.ELEMENTS[element];
+    this.elementIcon = this.add.image(W - 30, 20, `element_${element}`).setDepth(100).setScale(1.4);
+    this.elementLabel = this.add.text(W - 55, 36, elDef.name, {
+      fontSize: '9px', fontFamily: 'monospace',
+      color: `#${elDef.color.toString(16).padStart(6, '0')}`,
+    }).setScrollFactor(0).setDepth(100);
+
     // Message bar at bottom
     this.msgText = this.add.text(W / 2, this.cameras.main.height - 8, '', {
       fontSize: '11px', fontFamily: 'monospace',
@@ -37,6 +55,7 @@ class UIScene extends Phaser.Scene {
     game.events.on('player-healed',  this._onPlayerHealed, this);
     game.events.on('floor-changed',  this._onFloorChanged, this);
     game.events.on('show-message',   this._onShowMessage,  this);
+    game.events.on('charge-updated', this._onChargeUpdate, this);
   }
 
   _drawHpBar(frac) {
@@ -60,6 +79,30 @@ class UIScene extends Phaser.Scene {
     this.statsText.setText(`HP ${player.hp}/${player.maxHp}   ATK ${player.attack}   DEF ${player.defense}`);
   }
 
+  _drawChargeBar(charge) {
+    const element = this.scene.get('Game')?.registry?.get('element') || 'AIR';
+    const elColor = CONFIG.ELEMENTS[element]?.color || 0x88ddff;
+    const frac = charge / CONFIG.CHARGE_REQUIRED;
+    const bx = 22, by = 66, bw = 128, bh = 10;
+    this.chargeBg.clear();
+    this.chargeBg.fillStyle(0x000000, 0.7);
+    this.chargeBg.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    this.chargeBg.fillStyle(0x111111);
+    this.chargeBg.fillRect(bx, by, bw, bh);
+    this.chargeFg.clear();
+    if (frac >= 1) {
+      // Pulse when ready
+      this.chargeFg.fillStyle(elColor, 0.9 + Math.sin(Date.now() * 0.006) * 0.1);
+      this.chargeFg.fillRect(bx, by, bw, bh);
+      this.chargeLabel.setColor(`#${elColor.toString(16).padStart(6,'0')}`);
+    } else {
+      this.chargeFg.fillStyle(elColor, 0.7);
+      this.chargeFg.fillRect(bx, by, bw * frac, bh);
+      this.chargeLabel.setColor('#555555');
+    }
+  }
+
+  _onChargeUpdate(charge) { this._drawChargeBar(charge); }
   _onPlayerHurt(player) { this._onUpdateUi(player); }
   _onPlayerHealed(player) { this._onUpdateUi(player); }
 

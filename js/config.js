@@ -11,6 +11,15 @@ const CONFIG = {
     PIT: 4,
   },
 
+  CHARGE_REQUIRED: 80,
+
+  ELEMENTS: {
+    AIR:       { name: 'Air',       color: 0x88ddff, desc: 'Tornado — pulls enemies\ninto a deadly vortex' },
+    FIRE:      { name: 'Fire',      color: 0xff6622, desc: 'Inferno burst + burn\ndamage over time' },
+    ICE:       { name: 'Ice',       color: 0x44aaff, desc: 'Blizzard — freeze all\nenemies for 2.5 seconds' },
+    LIGHTNING: { name: 'Lightning', color: 0xffee22, desc: 'Chain bolt — arcs\nthrough up to 5 enemies' },
+  },
+
   PLAYER: {
     SPEED: 90,
     HP: 100,
