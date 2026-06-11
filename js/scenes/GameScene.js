@@ -658,21 +658,23 @@ class GameScene extends Phaser.Scene {
 
   showAttackEffect(x, y, facingX, facingY) {
     const angle = Math.atan2(facingY || 0, facingX || 1);
-    const halfArc = Math.PI * 0.45;
-    const radius = 20;
+    const perp = angle + Math.PI / 2;
+    const len = 22, hw = 10;
+
+    // Single slash: diagonal line perpendicular-offset from tip to base
+    const x1 = Math.cos(angle) * 4  + Math.cos(perp) * hw;
+    const y1 = Math.sin(angle) * 4  + Math.sin(perp) * hw;
+    const x2 = Math.cos(angle) * len - Math.cos(perp) * hw;
+    const y2 = Math.sin(angle) * len - Math.sin(perp) * hw;
 
     const gfx = this.add.graphics({ x, y }).setDepth(30);
     gfx.lineStyle(3, 0xffffff, 1);
-    gfx.strokeArc(0, 0, radius, Phaser.Math.RadToDeg(angle - halfArc), Phaser.Math.RadToDeg(angle + halfArc));
+    gfx.lineBetween(x1, y1, x2, y2);
 
     this.tweens.add({
       targets: gfx,
       alpha: 0,
-      scaleX: 1.5,
-      scaleY: 1.5,
-      x: x + Math.cos(angle) * 8,
-      y: y + Math.sin(angle) * 8,
-      duration: 160,
+      duration: 150,
       ease: 'Quad.easeOut',
       onComplete: () => gfx.destroy(),
     });
