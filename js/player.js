@@ -101,13 +101,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     const radius = 48;
     this.scene.showDashAttackEffect(this.x, this.y, radius);
 
-    this.scene.enemies.getChildren().forEach(enemy => {
+    this.scene.enemies.getChildren().slice().forEach(enemy => {
       if (!enemy.active) return;
       const dx = enemy.x - this.x;
       const dy = enemy.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < radius) {
         enemy.takeDamage(this.attack * 2);
+        if (!enemy.active) return; // died from the hit
         // Knockback
         if (dist > 0) {
           const nx = dx / dist, ny = dy / dist;

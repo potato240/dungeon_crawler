@@ -189,26 +189,12 @@ class GameScene extends Phaser.Scene {
   }
 
   showDashAttackEffect(x, y, radius) {
-    // Expanding ring
-    const ring = this.add.graphics().setDepth(30);
+    // All Graphics positioned at (x,y) and drawn at local (0,0) to keep bounding boxes small
+
+    // Expanding ring — drawn small, scaled up via tween
+    const ring = this.add.graphics({ x, y }).setDepth(30);
     ring.lineStyle(3, 0x88ccff, 1);
-    ring.strokeCircle(x, y, 4);
-
-    // Slash lines radiating outward
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const line = this.add.graphics().setDepth(30);
-      line.lineStyle(2, 0xffffff, 0.9);
-      line.lineBetween(
-        x + Math.cos(angle) * 8,  y + Math.sin(angle) * 8,
-        x + Math.cos(angle) * radius * 0.8, y + Math.sin(angle) * radius * 0.8
-      );
-      this.tweens.add({
-        targets: line, alpha: 0, duration: 280,
-        onComplete: () => line.destroy(),
-      });
-    }
-
+    ring.strokeCircle(0, 0, 4);
     this.tweens.add({
       targets: ring,
       scaleX: radius / 4, scaleY: radius / 4,
@@ -218,10 +204,25 @@ class GameScene extends Phaser.Scene {
       onComplete: () => ring.destroy(),
     });
 
+    // Slash lines radiating outward from local origin
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const line = this.add.graphics({ x, y }).setDepth(30);
+      line.lineStyle(2, 0xffffff, 0.9);
+      line.lineBetween(
+        Math.cos(angle) * 8,          Math.sin(angle) * 8,
+        Math.cos(angle) * radius * 0.8, Math.sin(angle) * radius * 0.8
+      );
+      this.tweens.add({
+        targets: line, alpha: 0, duration: 280,
+        onComplete: () => line.destroy(),
+      });
+    }
+
     // Shockwave flash
-    const flash = this.add.graphics().setDepth(29);
+    const flash = this.add.graphics({ x, y }).setDepth(29);
     flash.fillStyle(0x88ccff, 0.35);
-    flash.fillCircle(x, y, radius);
+    flash.fillCircle(0, 0, radius);
     this.tweens.add({
       targets: flash, alpha: 0, duration: 200,
       onComplete: () => flash.destroy(),
