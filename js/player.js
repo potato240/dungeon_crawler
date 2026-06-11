@@ -111,9 +111,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       const dy = enemy.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < radius) {
+        this.addCharge(this.attack * 2);
         enemy.takeDamage(this.attack * 2);
         if (!enemy.active) return; // died from the hit
-        this.addCharge(this.attack * 2);
         // Knockback
         if (dist > 0) {
           const nx = dx / dist, ny = dy / dist;
@@ -157,8 +157,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       const dx = enemy.x - cx;
       const dy = enemy.y - cy;
       if (Math.sqrt(dx * dx + dy * dy) < range) {
+        this.addCharge(this.attack);
         enemy.takeDamage(this.attack);
-        if (enemy.active) this.addCharge(this.attack);
       }
     });
   }
