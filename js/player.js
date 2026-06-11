@@ -15,19 +15,38 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.attackCooldown = 0;
     this.invincibleTimer = 0;
+    this.dashing = false;
+    this.dashTimer = 0;
+    this.dashCooldown = 0;
+    this.dashTrailTimer = 0;
     this.facing = { x: 1, y: 0 };
 
     this.cursors = scene.input.keyboard.createCursorKeys();
     this.wasd = scene.input.keyboard.addKeys('W,A,S,D');
     this.attackKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.dashKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
   }
 
   update(time, delta) {
     const dt = delta / 1000;
 
     if (this.attackCooldown > 0) this.attackCooldown -= dt;
-    if (this.invincibleTimer > 0) {
-      this.invincibleTimer -= dt;
+    if (this.dashCooldown > 0) this.dashCooldown -= dt;
+    if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
+
+    // During dash: maintain velocity, spawn trail, then end
+    if (this.dashing) {
+      this.dashTimer -= dt;
+      this.dashTrailTimer -= dt;
+      if (this.dashTrailTimer <= 0) {
+        this.dashTrailTimer = 0.03;
+        this._spawnTrail();
+      }
+      if (this.dashTimer <= 0) {
+        this.dashing = false;
+        this.setTint(0xffffff);
+      }
+      return;
     }
 
     let vx = 0, vy = 0;
@@ -44,9 +63,40 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     // Invincible flicker
     this.setAlpha(this.invincibleTimer > 0 && Math.floor(time / 80) % 2 === 0 ? 0.4 : 1);
 
+    if (Phaser.Input.Keyboard.JustDown(this.dashKey) && this.dashCooldown <= 0) {
+      this._doDash();
+    }
+
     if (Phaser.Input.Keyboard.JustDown(this.attackKey) && this.attackCooldown <= 0) {
       this._doAttack();
     }
+  }
+
+  _doDash() {
+    this.dashing = true;
+    this.dashTimer = CONFIG.PLAYER.DASH_DURATION;
+    this.dashCooldown = CONFIG.PLAYER.DASH_COOLDOWN;
+    this.dashTrailTimer = 0;
+    this.invincibleTimer = Math.max(this.invincibleTimer, CONFIG.PLAYER.DASH_DURATION);
+
+    const fx = this.facing.x || 0;
+    const fy = this.facing.y || 0;
+    const len = Math.sqrt(fx * fx + fy * fy) || 1;
+    this.setVelocity((fx / len) * CONFIG.PLAYER.DASH_SPEED, (fy / len) * CONFIG.PLAYER.DASH_SPEED);
+    this.setTint(0xaaddff);
+  }
+
+  _spawnTrail() {
+    const ghost = this.scene.add.image(this.x, this.y, 'player')
+      .setAlpha(0.45)
+      .setTint(0x4488ff)
+      .setDepth(7);
+    this.scene.tweens.add({
+      targets: ghost,
+      alpha: 0,
+      duration: 160,
+      onComplete: () => ghost.destroy(),
+    });
   }
 
   _doAttack() {

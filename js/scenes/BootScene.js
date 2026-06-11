@@ -39,7 +39,21 @@ class BootScene extends Phaser.Scene {
     tg.fillStyle(0xffcc44);
     tg.fillRect(T * 3 + 4, T - 5, T - 8, 3);
 
-    tg.generateTexture('tiles', T * 4, T);
+    // Slot 4: pit (void)
+    tg.fillStyle(0x06060f);
+    tg.fillRect(T * 4, 0, T, T);
+    tg.fillStyle(0x0c0c22);
+    tg.fillRect(T * 4 + 1, 1, T - 2, T - 2);
+    tg.fillStyle(0x050510);
+    tg.fillRect(T * 4 + 3, 3, T - 6, T - 6);
+    // purple shimmer edges
+    tg.fillStyle(0x2a1055);
+    tg.fillRect(T * 4 + 1, 1, T - 2, 1);
+    tg.fillRect(T * 4 + 1, T - 2, T - 2, 1);
+    tg.fillRect(T * 4 + 1, 1, 1, T - 2);
+    tg.fillRect(T * 4 + T - 2, 1, 1, T - 2);
+
+    tg.generateTexture('tiles', T * 5, T);
     tg.destroy();
 
     // Player

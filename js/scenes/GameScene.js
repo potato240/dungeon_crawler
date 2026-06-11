@@ -19,7 +19,7 @@ class GameScene extends Phaser.Scene {
     this.scene.launch('UI');
     this.scene.bringToTop('UI');
 
-    this.showMessage('WASD: Move  |  SPACE: Attack  |  Reach the golden stairs to descend');
+    this.showMessage('WASD: Move  |  SPACE: Attack  |  SHIFT: Dash over gaps');
   }
 
   _buildFloor() {
@@ -80,6 +80,8 @@ class GameScene extends Phaser.Scene {
 
     this.stairsTile = data.stairs;
     this._onStairs = false;
+    this._lastSafeX = px;
+    this._lastSafeY = py;
 
     this.events.emit('floor-changed', this.currentFloor);
     this.events.emit('player-healed', this.player); // refresh UI
@@ -115,6 +117,27 @@ class GameScene extends Phaser.Scene {
     this.player.update(time, delta);
 
     this.enemies.getChildren().forEach(e => { if (e.active) e.update(time, delta); });
+
+    // Pit check
+    const currentTile = this.groundLayer?.getTileAtWorldXY(this.player.x, this.player.y);
+    if (currentTile) {
+      if (currentTile.index === CONFIG.TILES.PIT && !this.player.dashing) {
+        this.player.takeDamage(20);
+        this.player.setPosition(this._lastSafeX, this._lastSafeY);
+        this.player.setVelocity(0, 0);
+        this.showMessage('Watch the gaps! SHIFT to dash across.');
+      } else if (currentTile.index === CONFIG.TILES.FLOOR || currentTile.index === CONFIG.TILES.STAIRS) {
+        this._lastSafeX = this.player.x;
+        this._lastSafeY = this.player.y;
+      }
+    }
+
+    // Enemy pit deaths
+    this.enemies.getChildren().forEach(e => {
+      if (!e.active) return;
+      const t = this.groundLayer?.getTileAtWorldXY(e.x, e.y);
+      if (t && t.index === CONFIG.TILES.PIT) e.takeDamage(999);
+    });
 
     // Item pickup (distance check)
     this.itemsGroup.getChildren().slice().forEach(item => {

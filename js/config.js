@@ -8,6 +8,7 @@ const CONFIG = {
     WALL: 1,
     FLOOR: 2,
     STAIRS: 3,
+    PIT: 4,
   },
 
   PLAYER: {
@@ -15,6 +16,9 @@ const CONFIG = {
     HP: 100,
     ATTACK: 15,
     ATTACK_RANGE: 26,
+    DASH_SPEED: 420,
+    DASH_DURATION: 0.17,
+    DASH_COOLDOWN: 1.2,
   },
 
   ENEMIES: [

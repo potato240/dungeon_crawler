@@ -52,7 +52,43 @@ class DungeonGenerator {
       }
     }
 
+    // Place pits in narrow corridors
+    this._addPits(map, playerStart, stairs);
+
     return { map, rooms, playerStart, stairs, enemies, items };
+  }
+
+  _addPits(map, playerStart, stairs) {
+    const { FLOOR, PIT } = CONFIG.TILES;
+    const pitTarget = 4 + Math.floor(Math.random() * 4);
+    let placed = 0;
+
+    for (let y = 2; y < this.rows - 2 && placed < pitTarget; y++) {
+      for (let x = 2; x < this.cols - 2 && placed < pitTarget; x++) {
+        if (map[y][x] !== FLOOR) continue;
+
+        // Skip near player start or stairs
+        if (Math.abs(x - playerStart.x) < 4 && Math.abs(y - playerStart.y) < 4) continue;
+        if (Math.abs(x - stairs.x) < 4 && Math.abs(y - stairs.y) < 4) continue;
+
+        // Horizontal corridor: floor left+right, wall above+below, run-up space
+        const isHCorridor =
+          map[y][x - 1] === FLOOR && map[y][x + 1] === FLOOR &&
+          map[y][x - 2] === FLOOR && map[y][x + 2] === FLOOR &&
+          map[y - 1]?.[x] !== FLOOR && map[y + 1]?.[x] !== FLOOR;
+
+        // Vertical corridor: floor above+below, wall left+right, run-up space
+        const isVCorridor =
+          map[y - 1]?.[x] === FLOOR && map[y + 1]?.[x] === FLOOR &&
+          map[y - 2]?.[x] === FLOOR && map[y + 2]?.[x] === FLOOR &&
+          map[y][x - 1] !== FLOOR && map[y][x + 1] !== FLOOR;
+
+        if ((isHCorridor || isVCorridor) && Math.random() < 0.25) {
+          map[y][x] = PIT;
+          placed++;
+        }
+      }
+    }
   }
 
   _generateRooms(count) {
