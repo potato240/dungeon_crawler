@@ -52,10 +52,27 @@ class DungeonGenerator {
       }
     }
 
+    // Mark hazard rooms
+    this._addHazardRooms(rooms, floor);
+
     // Place pits in narrow corridors
     this._addPits(map, playerStart, stairs);
 
     return { map, rooms, playerStart, stairs, enemies, items };
+  }
+
+  _addHazardRooms(rooms, floor) {
+    const types = ['FIRE', 'ICE', 'WIND', 'LIGHTNING'];
+    const count = 1 + Math.floor(floor / 3);
+    // Eligible: skip first (spawn) and last (stairs) rooms
+    const eligible = rooms.slice(1, -1).slice();
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    for (let i = 0; i < Math.min(count, eligible.length); i++) {
+      eligible[i].hazard = types[Math.floor(Math.random() * types.length)];
+    }
   }
 
   _addPits(map, playerStart, stairs) {

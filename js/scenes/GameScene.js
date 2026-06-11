@@ -86,6 +86,11 @@ class GameScene extends Phaser.Scene {
     this._lastSafeX = px;
     this._lastSafeY = py;
 
+    // Hazard room persistent tints
+    this._hazard = null;
+    this._playerRoomId = null;
+    this._drawHazardRoomTints();
+
     this.events.emit('floor-changed', this.currentFloor);
     this.events.emit('player-healed', this.player); // refresh UI
   }
@@ -112,6 +117,10 @@ class GameScene extends Phaser.Scene {
       this.tilemap = null;
       this.groundLayer = null;
     }
+
+    this._stopHazard();
+    this._hazard = null;
+    this._playerRoomId = null;
   }
 
   update(time, delta) {
@@ -120,6 +129,9 @@ class GameScene extends Phaser.Scene {
     this.player.update(time, delta);
 
     this.enemies.getChildren().forEach(e => { if (e.active) e.update(time, delta); });
+
+    // Hazard room check
+    this._checkHazardRoom(delta);
 
     // Super attack
     if (this.player.charge >= CONFIG.CHARGE_REQUIRED && Phaser.Input.Keyboard.JustDown(this.qKey)) {
@@ -198,6 +210,225 @@ class GameScene extends Phaser.Scene {
       this.showMessage('You perished... Back to floor 1.');
     });
   }
+
+  // ── Hazard rooms ─────────────────────────────────────────────────────────
+
+  _drawHazardRoomTints() {
+    const T = CONFIG.TILE_SIZE;
+    const colors = { FIRE: 0xff3300, ICE: 0x0088ff, WIND: 0x88ddff, LIGHTNING: 0xffee00 };
+    this.dungeonData.rooms.forEach(room => {
+      if (!room.hazard) return;
+      const gfx = this.add.graphics().setDepth(1);
+      gfx.fillStyle(colors[room.hazard], 0.07);
+      gfx.fillRect(room.x * T, room.y * T, room.w * T, room.h * T);
+      gfx.lineStyle(1, colors[room.hazard], 0.3);
+      gfx.strokeRect(room.x * T, room.y * T, room.w * T, room.h * T);
+    });
+  }
+
+  _getRoomAt(wx, wy) {
+    const T = CONFIG.TILE_SIZE;
+    const tx = Math.floor(wx / T), ty = Math.floor(wy / T);
+    return this.dungeonData.rooms.find(r =>
+      tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h
+    ) || null;
+  }
+
+  _checkHazardRoom(delta) {
+    const room = this._getRoomAt(this.player.x, this.player.y);
+    const id = room ? `${room.x},${room.y}` : null;
+    if (id === this._playerRoomId) {
+      // Still in same room — run wind force
+      if (this._hazard?.type === 'WIND') this._applyWind(delta);
+      if (this._hazard?.type === 'ICE')  this._applyIceSlug();
+      return;
+    }
+    this._playerRoomId = id;
+    this._stopHazard();
+    if (room?.hazard) this._startHazard(room);
+  }
+
+  _startHazard(room) {
+    const T = CONFIG.TILE_SIZE;
+    const labels = { FIRE: 'Inferno Chamber', ICE: 'Frozen Vault', WIND: 'Storm Chamber', LIGHTNING: 'Charged Vault' };
+    const colors = { FIRE: 0xff3300, ICE: 0x0088ff, WIND: 0x88ddff, LIGHTNING: 0xffee00 };
+    this.showMessage(`⚠ ${labels[room.hazard]}!`);
+    this.cameras.main.flash(200, ...(room.hazard === 'FIRE' ? [255,60,0] : room.hazard === 'ICE' ? [50,150,255] : room.hazard === 'WIND' ? [100,200,255] : [220,200,0]));
+
+    const effectGfx = this.add.graphics().setDepth(6);
+    this._hazard = { type: room.hazard, room, effectGfx, timer: null, windForce: { x: 1, y: 0 }, windArrow: null };
+
+    switch (room.hazard) {
+      case 'FIRE':      this._startFireHazard(room);      break;
+      case 'ICE':       this._startIceHazard(room);       break;
+      case 'WIND':      this._startWindHazard(room);      break;
+      case 'LIGHTNING': this._startLightningHazard(room); break;
+    }
+  }
+
+  _stopHazard() {
+    if (!this._hazard) return;
+    const h = this._hazard;
+    if (h.timer)     { h.timer.remove(false); h.timer = null; }
+    if (h.effectGfx) { h.effectGfx.destroy(); }
+    if (h.windArrow) { h.windArrow.destroy(); }
+    // Restore ice-affected enemies
+    if (h.type === 'ICE') {
+      this.enemies.getChildren().forEach(e => {
+        if (e.active && e._iceBoost) { e.speed /= 1.4; e._iceBoost = false; }
+      });
+    }
+    this._hazard = null;
+  }
+
+  // Fire ──────────────────────────────────────────────────
+  _startFireHazard(room) {
+    this._hazard.timer = this.time.addEvent({ delay: 1800, callback: this._triggerFire, callbackScope: this, loop: true });
+    this.time.delayedCall(600, this._triggerFire, [], this);
+  }
+
+  _triggerFire() {
+    if (!this._hazard || this._hazard.type !== 'FIRE') return;
+    const { room, effectGfx } = this._hazard;
+    const T = CONFIG.TILE_SIZE;
+    const tiles = [];
+    for (let i = 0; i < 4; i++) {
+      tiles.push({
+        tx: room.x + 1 + Math.floor(Math.random() * (room.w - 2)),
+        ty: room.y + 1 + Math.floor(Math.random() * (room.h - 2)),
+      });
+    }
+    // Warning phase
+    effectGfx.clear();
+    effectGfx.fillStyle(0xff8800, 0.45);
+    tiles.forEach(({ tx, ty }) => effectGfx.fillRect(tx * T + 1, ty * T + 1, T - 2, T - 2));
+
+    this.time.delayedCall(500, () => {
+      if (!this._hazard || this._hazard.type !== 'FIRE') return;
+      // Active fire phase
+      effectGfx.clear();
+      effectGfx.fillStyle(0xff2200, 0.75);
+      tiles.forEach(({ tx, ty }) => effectGfx.fillRect(tx * T + 1, ty * T + 1, T - 2, T - 2));
+      // Damage check
+      const px = Math.floor(this.player.x / T), py = Math.floor(this.player.y / T);
+      if (tiles.some(t => t.tx === px && t.ty === py)) this.player.takeDamage(12);
+
+      this.time.delayedCall(700, () => { if (this._hazard?.type === 'FIRE') effectGfx.clear(); });
+    });
+  }
+
+  // Ice ───────────────────────────────────────────────────
+  _startIceHazard(room) {
+    // Boost enemies in this room
+    this.enemies.getChildren().forEach(e => {
+      if (!e.active || e._iceBoost) return;
+      const T = CONFIG.TILE_SIZE;
+      const tx = Math.floor(e.x / T), ty = Math.floor(e.y / T);
+      if (tx >= room.x && tx < room.x + room.w && ty >= room.y && ty < room.y + room.h) {
+        e.speed *= 1.4;
+        e._iceBoost = true;
+        e.setTint(0xaaddff);
+      }
+    });
+    this.showMessage('The cold empowers your enemies...');
+  }
+
+  _applyIceSlug() {
+    // Dampen player velocity when no key held (sliding feel)
+    const vx = this.player.body.velocity.x, vy = this.player.body.velocity.y;
+    if (Math.abs(vx) > 0 || Math.abs(vy) > 0) {
+      this.player.body.velocity.x *= 0.88;
+      this.player.body.velocity.y *= 0.88;
+    }
+  }
+
+  // Wind ──────────────────────────────────────────────────
+  _startWindHazard(room) {
+    this._pickNewWindDirection();
+    this._hazard.windArrow = this.add.graphics().setDepth(7);
+    this._drawWindArrow();
+    this._hazard.timer = this.time.addEvent({ delay: 3000, callback: () => {
+      this._pickNewWindDirection();
+      this._drawWindArrow();
+      this.showMessage('The wind shifts!');
+    }, loop: true });
+  }
+
+  _pickNewWindDirection() {
+    const dirs = [{ x:1,y:0 }, { x:-1,y:0 }, { x:0,y:1 }, { x:0,y:-1 }];
+    this._hazard.windForce = dirs[Math.floor(Math.random() * dirs.length)];
+  }
+
+  _drawWindArrow() {
+    const h = this._hazard;
+    if (!h?.windArrow) return;
+    const T = CONFIG.TILE_SIZE;
+    const cx = (h.room.cx) * T + T / 2;
+    const cy = (h.room.cy) * T + T / 2;
+    h.windArrow.clear();
+    h.windArrow.lineStyle(2, 0x88ddff, 0.7);
+    h.windArrow.lineBetween(cx, cy, cx + h.windForce.x * 24, cy + h.windForce.y * 24);
+    h.windArrow.fillStyle(0x88ddff, 0.8);
+    h.windArrow.fillTriangle(
+      cx + h.windForce.x * 28, cy + h.windForce.y * 28,
+      cx + h.windForce.x * 20 - h.windForce.y * 5, cy + h.windForce.y * 20 + h.windForce.x * 5,
+      cx + h.windForce.x * 20 + h.windForce.y * 5, cy + h.windForce.y * 20 - h.windForce.x * 5
+    );
+  }
+
+  _applyWind(delta) {
+    const dt = delta / 1000;
+    const { windForce } = this._hazard;
+    this.player.body.velocity.x += windForce.x * 55 * dt * 60;
+    this.player.body.velocity.y += windForce.y * 55 * dt * 60;
+  }
+
+  // Lightning ─────────────────────────────────────────────
+  _startLightningHazard(room) {
+    this._hazard.timer = this.time.addEvent({ delay: 2000, callback: this._triggerLightning, callbackScope: this, loop: true });
+    this.time.delayedCall(800, this._triggerLightning, [], this);
+  }
+
+  _triggerLightning() {
+    if (!this._hazard || this._hazard.type !== 'LIGHTNING') return;
+    const { room, effectGfx } = this._hazard;
+    const T = CONFIG.TILE_SIZE;
+    const tx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
+    const ty = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
+
+    // Warning
+    effectGfx.clear();
+    effectGfx.fillStyle(0xffee44, 0.4);
+    effectGfx.fillRect(tx * T, ty * T, T, T);
+
+    this.time.delayedCall(600, () => {
+      if (!this._hazard || this._hazard.type !== 'LIGHTNING') return;
+      // Strike
+      effectGfx.clear();
+      effectGfx.fillStyle(0xffffff, 0.9);
+      effectGfx.fillRect(tx * T, ty * T, T, T);
+
+      // Lightning bolt from above
+      const bolt = this.add.graphics({ x: tx * T + T / 2, y: ty * T }).setDepth(40);
+      bolt.lineStyle(2, 0xffee22, 1);
+      bolt.beginPath(); bolt.moveTo(0, -T * 2);
+      for (let i = 1; i <= 4; i++) {
+        bolt.lineTo((Math.random() - 0.5) * 8, -T * 2 + i * (T * 2 / 4));
+      }
+      bolt.lineTo(0, T); bolt.strokePath();
+      this.cameras.main.shake(80, 0.006);
+
+      const px = Math.floor(this.player.x / T), py = Math.floor(this.player.y / T);
+      if (tx === px && ty === py) this.player.takeDamage(18);
+
+      this.time.delayedCall(150, () => {
+        if (this._hazard?.type === 'LIGHTNING') effectGfx.clear();
+        bolt.destroy();
+      });
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   _activateSuper() {
     this.player.charge = 0;
