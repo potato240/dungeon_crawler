@@ -72,7 +72,7 @@ class Rune extends Phaser.GameObjects.Container {
     gfx.clear();
     if (!visible || this.charged) return;
 
-    const r = 18;
+    const r = 13;
 
     // Outer ring
     gfx.lineStyle(1, 0x888888, 0.5);
