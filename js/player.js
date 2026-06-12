@@ -150,7 +150,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     const cx = this.x + this.facing.x * range * 0.6;
     const cy = this.y + this.facing.y * range * 0.6;
 
-    this.scene.showAttackEffect(cx, cy, this.facing.x, this.facing.y);
+    this.scene.showAttackEffect(cx, cy);
 
     this.scene.enemies.getChildren().forEach(enemy => {
       if (!enemy.active) return;
