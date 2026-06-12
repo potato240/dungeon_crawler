@@ -266,7 +266,8 @@ class GameScene extends Phaser.Scene {
         const gapInfo = this._tryAddLavaGap(r);
         if (gapInfo) { rx = gapInfo.runeX; ry = gapInfo.runeY; }
       }
-      const rune = new Rune(this, rx, ry);
+      const isSkillCheck = i !== lavaRoomIdx && Math.random() < 0.4;
+      const rune = new Rune(this, rx, ry, isSkillCheck);
       this._runesGroup.add(rune);
     }
     this._runesTotal = count;
@@ -321,13 +322,17 @@ class GameScene extends Phaser.Scene {
   _updateRuneCharging(delta) {
     const dt = delta / 1000;
     const spaceHeld = this.player.attackKey.isDown;
-    if (!spaceHeld) return;
+    const spaceJustDown = Phaser.Input.Keyboard.JustDown(this.player.attackKey);
     this._runesGroup.getChildren().forEach(rune => {
       if (rune.charged) return;
       const dx = rune.x - this.player.x;
       const dy = rune.y - this.player.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 28) {
-        rune.addCharge(dt);
+      const near = Math.sqrt(dx * dx + dy * dy) < 28;
+      if (rune.isSkillCheck) {
+        rune.updateSkillCheck(dt, near);
+        if (near && spaceJustDown) rune.attemptSkillCheck();
+      } else {
+        if (near && spaceHeld) rune.addCharge(dt);
       }
     });
   }
