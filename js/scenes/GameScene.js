@@ -255,9 +255,10 @@ class GameScene extends Phaser.Scene {
     }
     const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
 
-    // One rune gets a lava gap, one gets a skill check (can overlap)
-    const lavaRoomIdx = Math.floor(Math.random() * count);
-    const skillCheckIdx = count > 1 ? Math.floor(Math.random() * count) : -1;
+    // Assign special types — each needs count > threshold, indices must differ
+    const lavaRoomIdx   = Math.floor(Math.random() * count);
+    const skillCheckIdx = count > 1 ? this._uniqueIdx(count, [lavaRoomIdx]) : -1;
+    const multiIdx      = count > 2 ? this._uniqueIdx(count, [lavaRoomIdx, skillCheckIdx]) : -1;
 
     for (let i = 0; i < count; i++) {
       const r = eligible[i];
@@ -267,7 +268,8 @@ class GameScene extends Phaser.Scene {
         const gapInfo = this._tryAddLavaGap(r);
         if (gapInfo) { rx = gapInfo.runeX; ry = gapInfo.runeY; }
       }
-      const rune = new Rune(this, rx, ry, i === skillCheckIdx);
+      const type = i === skillCheckIdx ? 'skillcheck' : i === multiIdx ? 'multi' : 'regular';
+      const rune = new Rune(this, rx, ry, type);
       this._runesGroup.add(rune);
     }
     this._runesTotal = count;
@@ -319,6 +321,12 @@ class GameScene extends Phaser.Scene {
     this.events.emit('stairs-arrow', { angle, onScreen });
   }
 
+  _uniqueIdx(count, exclude) {
+    const pool = [];
+    for (let i = 0; i < count; i++) { if (!exclude.includes(i)) pool.push(i); }
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)] : -1;
+  }
+
   _updateRuneCharging(delta) {
     const dt = delta / 1000;
     const spaceHeld = this.player.attackKey.isDown;
@@ -331,6 +339,8 @@ class GameScene extends Phaser.Scene {
       if (rune.isSkillCheck) {
         rune.updateSkillCheck(dt, near);
         if (near && spaceJustDown) rune.attemptSkillCheck();
+      } else if (rune.isMulti) {
+        if (near && spaceJustDown) rune.press();
       } else {
         if (near && spaceHeld) rune.addCharge(dt);
       }

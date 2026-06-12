@@ -1,19 +1,21 @@
+// type: 'regular' | 'skillcheck' | 'multi'
 class Rune extends Phaser.GameObjects.Container {
-  constructor(scene, wx, wy, isSkillCheck = false) {
+  constructor(scene, wx, wy, type = 'regular') {
     super(scene, wx, wy);
     scene.add.existing(this);
     this.setDepth(5);
 
     this.charged = false;
-    this.isSkillCheck = isSkillCheck;
+    this.type = type;
     this._charge = 0;
 
     this._arcGfx = scene.add.graphics();
     this._glyph = scene.add.image(0, 0, 'rune_idle');
-    if (isSkillCheck) this._glyph.setTint(0xff9900);
+    if (type === 'skillcheck') this._glyph.setTint(0xff9900);
+    if (type === 'multi')      this._glyph.setTint(0x4499ff);
     this.add([this._arcGfx, this._glyph]);
 
-    if (!isSkillCheck) {
+    if (type === 'regular') {
       scene.tweens.add({
         targets: this._glyph,
         y: -3, duration: 900, yoyo: true, repeat: -1,
@@ -21,7 +23,7 @@ class Rune extends Phaser.GameObjects.Container {
       });
     }
 
-    if (isSkillCheck) {
+    if (type === 'skillcheck') {
       this._needleAngle = 0;
       this._needleSpeed = 1.8;
       this._successStart = Math.random() * Math.PI * 2;
@@ -29,37 +31,56 @@ class Rune extends Phaser.GameObjects.Container {
       this._scGfx = scene.add.graphics();
       this.add(this._scGfx);
     }
-  }
 
-  addCharge(dt) {
-    if (this.charged || this.isSkillCheck) return;
-    this._charge = Math.min(1, this._charge + dt / 3);
-    this._redrawArc();
-    if (this._charge >= 1) {
-      this.charged = true;
-      this._onCharged();
-      this.scene.events.emit('rune-charged');
+    if (type === 'multi') {
+      this._pressesRequired = 12;
+      this._presses = 0;
     }
   }
 
+  get isSkillCheck() { return this.type === 'skillcheck'; }
+  get isMulti()      { return this.type === 'multi'; }
+
+  // ── Regular: hold SPACE ───────────────────────────────────────────────────
+  addCharge(dt) {
+    if (this.charged || this.type !== 'regular') return;
+    this._charge = Math.min(1, this._charge + dt / 3);
+    this._redrawArc(0x88ffcc);
+    if (this._charge >= 1) this._complete();
+  }
+
+  // ── Multi: mash SPACE ─────────────────────────────────────────────────────
+  press() {
+    if (this.charged || this.type !== 'multi') return;
+    this._presses++;
+    this._charge = this._presses / this._pressesRequired;
+    this._redrawArc(0x4499ff);
+    // Bounce feedback
+    this.scene.tweens.add({
+      targets: this._glyph,
+      scaleX: 1.3, scaleY: 1.3,
+      duration: 60, yoyo: true,
+    });
+    if (this._presses >= this._pressesRequired) this._complete();
+  }
+
+  // ── Skill check: hit the green zone ──────────────────────────────────────
   updateSkillCheck(dt, playerNear) {
-    if (this.charged || !this.isSkillCheck) return;
+    if (this.charged || this.type !== 'skillcheck') return;
     if (playerNear) this._needleAngle = (this._needleAngle + this._needleSpeed * dt) % (Math.PI * 2);
     this._redrawSkillCheck(playerNear);
   }
 
   attemptSkillCheck() {
-    if (this.charged || !this.isSkillCheck) return;
+    if (this.charged || this.type !== 'skillcheck') return;
     const n = ((this._needleAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const s = ((this._successStart % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const e = (s + this._successArc) % (Math.PI * 2);
     const hit = s <= e ? (n >= s && n <= e) : (n >= s || n <= e);
 
     if (hit) {
-      this.charged = true;
       if (this._scGfx) this._scGfx.clear();
-      this._onCharged();
-      this.scene.events.emit('rune-charged');
+      this._complete();
     } else {
       this._glyph.setTint(0xff2222);
       this.scene.time.delayedCall(220, () => { if (this._glyph) this._glyph.setTint(0xff9900); });
@@ -67,55 +88,25 @@ class Rune extends Phaser.GameObjects.Container {
     }
   }
 
-  _redrawSkillCheck(visible) {
-    const gfx = this._scGfx;
-    gfx.clear();
-    if (!visible || this.charged) return;
-
-    const r = 13;
-
-    // Outer ring
-    gfx.lineStyle(1, 0x888888, 0.5);
-    gfx.beginPath();
-    for (let i = 0; i <= 28; i++) {
-      const a = (i / 28) * Math.PI * 2;
-      i === 0 ? gfx.moveTo(Math.cos(a) * r, Math.sin(a) * r)
-              : gfx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    }
-    gfx.closePath();
-    gfx.strokePath();
-
-    // Success zone
-    gfx.lineStyle(3, 0x44ff88, 1);
-    gfx.beginPath();
-    for (let i = 0; i <= 10; i++) {
-      const a = this._successStart + this._successArc * (i / 10);
-      i === 0 ? gfx.moveTo(Math.cos(a) * r, Math.sin(a) * r)
-              : gfx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    }
-    gfx.strokePath();
-
-    // Needle
-    gfx.lineStyle(2, 0xffffff, 1);
-    gfx.lineBetween(0, 0, Math.cos(this._needleAngle) * r, Math.sin(this._needleAngle) * r);
-  }
-
-  _onCharged() {
+  // ── Shared ────────────────────────────────────────────────────────────────
+  _complete() {
+    this.charged = true;
+    this._arcGfx.clear();
     this._glyph.setTexture('rune_charged');
     this._glyph.clearTint();
-    this._arcGfx.clear();
     this.scene.tweens.add({
       targets: this._glyph,
       scaleX: 1.5, scaleY: 1.5,
       duration: 200, yoyo: true,
     });
+    this.scene.events.emit('rune-charged');
   }
 
-  _redrawArc() {
+  _redrawArc(color) {
     const gfx = this._arcGfx;
     gfx.clear();
     if (this._charge <= 0) return;
-    gfx.lineStyle(2, 0x88ffcc, 0.9);
+    gfx.lineStyle(2, color, 0.9);
     const steps = Math.max(2, Math.ceil(this._charge * 28));
     const startAngle = -Math.PI / 2;
     const sweep = this._charge * Math.PI * 2;
@@ -129,9 +120,38 @@ class Rune extends Phaser.GameObjects.Container {
     gfx.strokePath();
   }
 
+  _redrawSkillCheck(visible) {
+    const gfx = this._scGfx;
+    gfx.clear();
+    if (!visible || this.charged) return;
+    const r = 13;
+
+    gfx.lineStyle(1, 0x888888, 0.5);
+    gfx.beginPath();
+    for (let i = 0; i <= 28; i++) {
+      const a = (i / 28) * Math.PI * 2;
+      i === 0 ? gfx.moveTo(Math.cos(a) * r, Math.sin(a) * r)
+              : gfx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    gfx.closePath();
+    gfx.strokePath();
+
+    gfx.lineStyle(3, 0x44ff88, 1);
+    gfx.beginPath();
+    for (let i = 0; i <= 10; i++) {
+      const a = this._successStart + this._successArc * (i / 10);
+      i === 0 ? gfx.moveTo(Math.cos(a) * r, Math.sin(a) * r)
+              : gfx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    gfx.strokePath();
+
+    gfx.lineStyle(2, 0xffffff, 1);
+    gfx.lineBetween(0, 0, Math.cos(this._needleAngle) * r, Math.sin(this._needleAngle) * r);
+  }
+
   destroy() {
     if (this._arcGfx && this._arcGfx.scene) this._arcGfx.destroy();
-    if (this._scGfx && this._scGfx.scene) this._scGfx.destroy();
+    if (this._scGfx  && this._scGfx.scene)  this._scGfx.destroy();
     super.destroy();
   }
 }
