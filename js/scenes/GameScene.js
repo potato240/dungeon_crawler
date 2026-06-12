@@ -318,16 +318,18 @@ class GameScene extends Phaser.Scene {
     const sy = this.stairsTile.y * T + T / 2;
     const angle = Math.atan2(sy - this.player.y, sx - this.player.x);
 
-    // Hide arrow when stairs are visible on screen
-    const wv = cam.worldView;
-    if (sx > wv.x && sx < wv.right && sy > wv.y && sy < wv.bottom) {
+    // Convert stairs world pos to screen pos
+    const screenX = (sx - cam.scrollX) * cam.zoom;
+    const screenY = (sy - cam.scrollY) * cam.zoom;
+    const W = cam.width, H = cam.height;
+    const onScreen = screenX > 20 && screenX < W - 20 && screenY > 20 && screenY < H - 20;
+    if (onScreen) {
       this._stairsArrow.setVisible(false);
       return;
     }
     this._stairsArrow.setVisible(true);
 
-    const W = cam.width, H = cam.height;
-    const margin = 28;
+    const margin = 30;
     const halfW = W / 2 - margin;
     const halfH = H / 2 - margin;
     const cosA = Math.cos(angle), sinA = Math.sin(angle);
