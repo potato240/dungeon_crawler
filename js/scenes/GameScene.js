@@ -255,10 +255,20 @@ class GameScene extends Phaser.Scene {
     }
     const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
 
-    // Lava is placement only — skill check and multi are assigned independently
-    const lavaRoomIdx   = Math.floor(Math.random() * count);
-    const skillCheckIdx = count > 1 ? Math.floor(Math.random() * count) : -1;
-    const multiIdx      = count > 1 ? this._uniqueIdx(count, [skillCheckIdx]) : -1;
+    const lavaRoomIdx = Math.floor(Math.random() * count);
+
+    // Build type assignment: count=1 → all regular; count=2 → one regular + one special;
+    // count>=3 → one skillcheck + one multi + rest regular
+    const types = Array(count).fill('regular');
+    if (count === 2) {
+      const specialIdx = Math.floor(Math.random() * 2);
+      types[specialIdx] = Math.random() < 0.5 ? 'skillcheck' : 'multi';
+    } else if (count >= 3) {
+      const scIdx = Math.floor(Math.random() * count);
+      const mIdx  = this._uniqueIdx(count, [scIdx]);
+      types[scIdx] = 'skillcheck';
+      types[mIdx]  = 'multi';
+    }
 
     for (let i = 0; i < count; i++) {
       const r = eligible[i];
@@ -268,8 +278,7 @@ class GameScene extends Phaser.Scene {
         const gapInfo = this._tryAddLavaGap(r);
         if (gapInfo) { rx = gapInfo.runeX; ry = gapInfo.runeY; }
       }
-      const type = i === skillCheckIdx ? 'skillcheck' : i === multiIdx ? 'multi' : 'regular';
-      console.log(`Rune ${i}/${count}: type=${type} skillCheckIdx=${skillCheckIdx} multiIdx=${multiIdx}`);
+      const type = types[i];
       const rune = new Rune(this, rx, ry, type);
       this._runesGroup.add(rune);
     }
