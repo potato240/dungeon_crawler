@@ -253,7 +253,7 @@ class GameScene extends Phaser.Scene {
       const j = Math.floor(Math.random() * (i + 1));
       [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
-    const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
+    const count = Math.min(3 + Math.floor(Math.random() * 3), eligible.length);
 
     // Assign special types — each needs count > threshold, indices must differ
     const lavaRoomIdx   = Math.floor(Math.random() * count);
