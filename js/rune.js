@@ -9,35 +9,16 @@ class Rune extends Phaser.GameObjects.Container {
     this.runeType = runeType;
     this._charge = 0;
 
-    // Colored glow disc — drawn before glyph so it sits behind
     this._glowGfx = scene.add.graphics();
-    if (runeType === 'skillcheck') {
-      this._glowGfx.fillStyle(0xff8800, 0.7);
-      this._glowGfx.fillCircle(0, 0, 14);
-    } else if (runeType === 'multi') {
-      this._glowGfx.fillStyle(0x2277ff, 0.7);
-      this._glowGfx.fillCircle(0, 0, 14);
-    }
-
     this._arcGfx = scene.add.graphics();
     this._glyph = scene.add.image(0, 0, 'rune_idle');
     this.add([this._glowGfx, this._arcGfx, this._glyph]);
 
-    if (runeType === 'regular') {
-      scene.tweens.add({
-        targets: this._glyph,
-        y: -3, duration: 900, yoyo: true, repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    } else {
-      // Pulse glow for special types
-      scene.tweens.add({
-        targets: this._glowGfx,
-        alpha: 0.3,
-        duration: 700, yoyo: true, repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    scene.tweens.add({
+      targets: this._glyph,
+      y: -3, duration: 900, yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     if (runeType === 'skillcheck') {
       this._needleAngle = 0;
