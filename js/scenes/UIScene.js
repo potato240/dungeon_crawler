@@ -155,6 +155,7 @@ class UIScene extends Phaser.Scene {
 
   _onFloorChanged(floor) {
     this.floorLabel.setText(`Floor ${floor}`);
+    if (this.stairsArrow) this.stairsArrow.setVisible(false);
   }
 
   _onShowMessage(msg) {
