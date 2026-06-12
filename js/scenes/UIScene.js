@@ -21,16 +21,24 @@ class UIScene extends Phaser.Scene {
       color: '#cccccc', stroke: '#000000', strokeThickness: 2,
     }).setScrollFactor(0).setDepth(100);
 
-    // Charge bar
+    const isRuneMode = this.scene.get('Game')?.registry?.get('mode') === 'rune';
+
+    // Charge bar (combat only)
     this.chargeBg = this.add.graphics().setDepth(100);
     this.chargeFg = this.add.graphics().setDepth(101);
     this.chargeLabel = this.add.text(10, 68, 'Q', {
       fontSize: '10px', fontFamily: 'monospace',
       color: '#888888', stroke: '#000000', strokeThickness: 2,
     }).setScrollFactor(0).setDepth(102);
-    this._drawChargeBar(0);
+    if (isRuneMode) {
+      this.chargeBg.setVisible(false);
+      this.chargeFg.setVisible(false);
+      this.chargeLabel.setVisible(false);
+    } else {
+      this._drawChargeBar(0);
+    }
 
-    // Element icon in top-right
+    // Element icon in top-right (combat only)
     const element = this.scene.get('Game')?.registry?.get('element') || 'AIR';
     const elDef = CONFIG.ELEMENTS[element];
     this.elementIcon = this.add.image(W - 30, 20, `element_${element}`).setDepth(100).setScale(1.4);
@@ -38,6 +46,16 @@ class UIScene extends Phaser.Scene {
       fontSize: '9px', fontFamily: 'monospace',
       color: `#${elDef.color.toString(16).padStart(6, '0')}`,
     }).setScrollFactor(0).setDepth(100);
+    if (isRuneMode) {
+      this.elementIcon.setVisible(false);
+      this.elementLabel.setVisible(false);
+    }
+
+    // Rune counter (rune mode only)
+    this.runeLabel = this.add.text(W - 10, 10, '', {
+      fontSize: '11px', fontFamily: 'monospace',
+      color: '#88ffcc', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(102).setVisible(isRuneMode);
 
     // Message bar at bottom
     this.msgText = this.add.text(W / 2, this.cameras.main.height - 8, '', {
@@ -56,6 +74,7 @@ class UIScene extends Phaser.Scene {
     game.events.on('floor-changed',  this._onFloorChanged, this);
     game.events.on('show-message',   this._onShowMessage,  this);
     game.events.on('charge-updated', this._onChargeUpdate, this);
+    game.events.on('rune-progress',  this._onRuneProgress,  this);
   }
 
   _drawHpBar(frac) {
@@ -103,6 +122,9 @@ class UIScene extends Phaser.Scene {
   }
 
   _onChargeUpdate(charge) { this._drawChargeBar(charge); }
+  _onRuneProgress(powered, total) {
+    if (this.runeLabel) this.runeLabel.setText(`Runes ${powered}/${total}`);
+  }
   _onPlayerHurt(player) { this._onUpdateUi(player); }
   _onPlayerHealed(player) { this._onUpdateUi(player); }
 

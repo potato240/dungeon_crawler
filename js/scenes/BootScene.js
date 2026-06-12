@@ -163,6 +163,33 @@ class BootScene extends Phaser.Scene {
       eg2.destroy();
     });
 
-    this.scene.start('ElementSelect');
+    // Rune idle (16x16 purple diamond with cross)
+    const rig = this.make.graphics({ add: false });
+    rig.fillStyle(0x220033, 1);
+    rig.fillTriangle(8, 1, 15, 8, 8, 15);
+    rig.fillTriangle(8, 1, 1, 8, 8, 15);
+    rig.lineStyle(1, 0xaa77ee, 1);
+    rig.lineBetween(8, 1, 15, 8); rig.lineBetween(15, 8, 8, 15);
+    rig.lineBetween(8, 15, 1, 8); rig.lineBetween(1, 8, 8, 1);
+    rig.lineStyle(1, 0xcc99ff, 0.9);
+    rig.lineBetween(8, 3, 8, 13); rig.lineBetween(3, 8, 13, 8);
+    rig.generateTexture('rune_idle', 16, 16);
+    rig.destroy();
+
+    // Rune charged (16x16 cyan diamond)
+    const rcg = this.make.graphics({ add: false });
+    rcg.fillStyle(0x003322, 1);
+    rcg.fillTriangle(8, 1, 15, 8, 8, 15);
+    rcg.fillTriangle(8, 1, 1, 8, 8, 15);
+    rcg.lineStyle(1, 0x44ffcc, 1);
+    rcg.lineBetween(8, 1, 15, 8); rcg.lineBetween(15, 8, 8, 15);
+    rcg.lineBetween(8, 15, 1, 8); rcg.lineBetween(1, 8, 8, 1);
+    rcg.lineStyle(1, 0xaaffee, 1);
+    rcg.lineBetween(8, 3, 8, 13); rcg.lineBetween(3, 8, 13, 8);
+    rcg.fillStyle(0xffffff, 1); rcg.fillCircle(8, 8, 2);
+    rcg.generateTexture('rune_charged', 16, 16);
+    rcg.destroy();
+
+    this.scene.start('ModeSelect');
   }
 }

@@ -4,7 +4,7 @@ class DungeonGenerator {
     this.rows = rows;
   }
 
-  generate(floor) {
+  generate(floor, opts = {}) {
     const { WALL, FLOOR, STAIRS } = CONFIG.TILES;
     const map = Array.from({ length: this.rows }, () => new Array(this.cols).fill(WALL));
 
@@ -53,10 +53,10 @@ class DungeonGenerator {
     }
 
     // Mark hazard rooms
-    this._addHazardRooms(rooms, floor);
+    if (!opts.noHazard) this._addHazardRooms(rooms, floor);
 
     // Place pits in narrow corridors
-    this._addPits(map, playerStart, stairs);
+    if (!opts.noPits) this._addPits(map, playerStart, stairs);
 
     return { map, rooms, playerStart, stairs, enemies, items };
   }

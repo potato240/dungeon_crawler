@@ -75,7 +75,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       this._doDash();
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.attackKey)) {
+    const isRuneMode = this.scene.registry.get('mode') === 'rune';
+    if (!isRuneMode && Phaser.Input.Keyboard.JustDown(this.attackKey)) {
       if (this.attackCooldown <= 0) this._doAttack();
     }
   }
@@ -105,14 +106,15 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     const radius = 48;
     this.scene.showDashAttackEffect(this.x, this.y, radius);
 
+    const isRuneMode = this.scene.registry.get('mode') === 'rune';
     this.scene.enemies.getChildren().slice().forEach(enemy => {
       if (!enemy.active) return;
       const dx = enemy.x - this.x;
       const dy = enemy.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < radius) {
-        this.addCharge(this.attack * 2);
-        enemy.takeDamage(this.attack * 2);
+        if (!isRuneMode) this.addCharge(this.attack * 2);
+        if (!isRuneMode) enemy.takeDamage(this.attack * 2);
         if (!enemy.active) return; // died from the hit
         // Knockback
         if (dist > 0) {

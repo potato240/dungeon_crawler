@@ -14,6 +14,7 @@ class GameScene extends Phaser.Scene {
 
     this.events.on('player-dead', this._onPlayerDead, this);
     this._activeTornadoes = [];
+    this._runesGroup = this.add.group();
 
     this._buildFloor();
 
@@ -22,14 +23,20 @@ class GameScene extends Phaser.Scene {
     this.scene.launch('UI');
     this.scene.bringToTop('UI');
 
-    this.showMessage('WASD: Move  |  SPACE: Attack  |  SHIFT: Dash  |  Q: Elemental Super');
+    const isRuneMode = this.registry.get('mode') === 'rune';
+    if (isRuneMode) {
+      this.showMessage('Find and charge all runes to unlock the stairs  |  SHIFT: Dash');
+    } else {
+      this.showMessage('WASD: Move  |  SPACE: Attack  |  SHIFT: Dash  |  Q: Elemental Super');
+    }
   }
 
   _buildFloor() {
     this._cleanup();
 
+    const isRuneMode = this.registry.get('mode') === 'rune';
     const gen = new DungeonGenerator(CONFIG.MAP_COLS, CONFIG.MAP_ROWS);
-    const data = gen.generate(this.currentFloor);
+    const data = gen.generate(this.currentFloor, isRuneMode ? { noHazard: true, noPits: true } : {});
     this.dungeonData = data;
 
     const T = CONFIG.TILE_SIZE;
@@ -64,8 +71,11 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setZoom(2.5);
 
-    // Spawn enemies
-    data.enemies.forEach(e => {
+    // Spawn enemies (rune mode: cap at 1-3 total, type 0 only)
+    const enemyList = isRuneMode
+      ? data.enemies.slice(0, 1 + Math.floor(Math.random() * 3)).map(e => ({ ...e, type: 0 }))
+      : data.enemies;
+    enemyList.forEach(e => {
       const enemy = new Enemy(this, e.x * T + T / 2, e.y * T + T / 2, e.type);
       this.enemies.add(enemy);
     });
@@ -89,7 +99,12 @@ class GameScene extends Phaser.Scene {
     // Hazard room persistent tints
     this._hazard = null;
     this._playerRoomId = null;
-    this._drawHazardRoomTints();
+    if (!isRuneMode) this._drawHazardRoomTints();
+
+    // Rune mode: place runes and lock stairs
+    this._stairsLocked = false;
+    this._stairLockGfx = null;
+    if (isRuneMode) this._placeRunes();
 
     this.events.emit('floor-changed', this.currentFloor);
     this.events.emit('player-healed', this.player); // refresh UI
@@ -118,6 +133,13 @@ class GameScene extends Phaser.Scene {
       this.groundLayer = null;
     }
 
+    if (this._runesGroup) {
+      this._runesGroup.getChildren().slice().forEach(r => r.destroy());
+      this._runesGroup.clear(false, false);
+    }
+    if (this._stairLockGfx) { this._stairLockGfx.destroy(); this._stairLockGfx = null; }
+    this.events.off('rune-charged', this._onRuneCharged, this);
+
     this._stopHazard();
     this._hazard = null;
     this._playerRoomId = null;
@@ -130,16 +152,22 @@ class GameScene extends Phaser.Scene {
 
     this.enemies.getChildren().forEach(e => { if (e.active) e.update(time, delta); });
 
-    // Hazard room check
-    this._checkHazardRoom(delta);
+    const isRuneMode = this.registry.get('mode') === 'rune';
 
-    // Super attack
-    if (this.player.charge >= CONFIG.CHARGE_REQUIRED && Phaser.Input.Keyboard.JustDown(this.qKey)) {
-      this._activateSuper();
+    if (isRuneMode) {
+      this._updateRuneCharging(delta);
+    } else {
+      // Hazard room check
+      this._checkHazardRoom(delta);
+
+      // Super attack
+      if (this.player.charge >= CONFIG.CHARGE_REQUIRED && Phaser.Input.Keyboard.JustDown(this.qKey)) {
+        this._activateSuper();
+      }
+
+      // Update active tornadoes
+      this._activeTornadoes = this._activeTornadoes.filter(t => this._updateTornado(t, delta));
     }
-
-    // Update active tornadoes
-    this._activeTornadoes = this._activeTornadoes.filter(t => this._updateTornado(t, delta));
 
     // Pit check
     const currentTile = this.groundLayer?.getTileAtWorldXY(this.player.x, this.player.y);
@@ -176,7 +204,7 @@ class GameScene extends Phaser.Scene {
     const ty = Math.floor(this.player.y / T);
     const onStairs = tx === this.stairsTile.x && ty === this.stairsTile.y;
 
-    if (onStairs && !this._onStairs) {
+    if (onStairs && !this._onStairs && !this._stairsLocked) {
       this._onStairs = true;
       this._descend();
     } else if (!onStairs) {
@@ -208,6 +236,73 @@ class GameScene extends Phaser.Scene {
       this._buildFloor();
       this.cameras.main.fadeIn(600);
       this.showMessage('You perished... Back to floor 1.');
+    });
+  }
+
+  // ── Rune mode ────────────────────────────────────────────────────────────
+
+  _placeRunes() {
+    const T = CONFIG.TILE_SIZE;
+    const rooms = this.dungeonData.rooms;
+    // eligible: skip first (spawn) and last (stairs)
+    const eligible = rooms.slice(1, -1).slice();
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
+    for (let i = 0; i < count; i++) {
+      const r = eligible[i];
+      const rx = (r.cx) * T + T / 2;
+      const ry = (r.cy) * T + T / 2;
+      const rune = new Rune(this, rx, ry);
+      this._runesGroup.add(rune);
+    }
+    this._runesTotal = count;
+    this._runesPowered = 0;
+    this._stairsLocked = count > 0;
+
+    // Lock visual: red overlay on stairs
+    if (this._stairsLocked) {
+      const sx = this.dungeonData.stairs.x * T;
+      const sy = this.dungeonData.stairs.y * T;
+      this._stairLockGfx = this.add.graphics().setDepth(3);
+      this._stairLockGfx.fillStyle(0xff2200, 0.5);
+      this._stairLockGfx.fillRect(sx, sy, T, T);
+    }
+
+    this.events.on('rune-charged', this._onRuneCharged, this);
+    this.events.emit('rune-progress', this._runesPowered, this._runesTotal);
+  }
+
+  _onRuneCharged() {
+    this._runesPowered++;
+    this.events.emit('rune-progress', this._runesPowered, this._runesTotal);
+    if (this._runesPowered >= this._runesTotal) {
+      this._unlockStairs();
+    } else {
+      this.showMessage(`Rune activated! ${this._runesPowered}/${this._runesTotal} — keep going`);
+    }
+  }
+
+  _unlockStairs() {
+    this._stairsLocked = false;
+    if (this._stairLockGfx) { this._stairLockGfx.destroy(); this._stairLockGfx = null; }
+    this.cameras.main.flash(300, 80, 255, 180);
+    this.showMessage('All runes powered! The stairs are open!');
+  }
+
+  _updateRuneCharging(delta) {
+    const dt = delta / 1000;
+    const spaceHeld = this.player.attackKey.isDown;
+    if (!spaceHeld) return;
+    this._runesGroup.getChildren().forEach(rune => {
+      if (rune.charged) return;
+      const dx = rune.x - this.player.x;
+      const dy = rune.y - this.player.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 28) {
+        rune.addCharge(dt);
+      }
     });
   }
 
