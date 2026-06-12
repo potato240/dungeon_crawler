@@ -1,37 +1,45 @@
-// type: 'regular' | 'skillcheck' | 'multi'
+// runeType: 'regular' | 'skillcheck' | 'multi'
 class Rune extends Phaser.GameObjects.Container {
-  constructor(scene, wx, wy, type = 'regular') {
+  constructor(scene, wx, wy, runeType = 'regular') {
     super(scene, wx, wy);
     scene.add.existing(this);
     this.setDepth(5);
 
     this.charged = false;
-    this.type = type;
+    this.runeType = runeType;
     this._charge = 0;
+
+    // Colored glow disc — drawn before glyph so it sits behind
+    this._glowGfx = scene.add.graphics();
+    if (runeType === 'skillcheck') {
+      this._glowGfx.fillStyle(0xff8800, 0.7);
+      this._glowGfx.fillCircle(0, 0, 14);
+    } else if (runeType === 'multi') {
+      this._glowGfx.fillStyle(0x2277ff, 0.7);
+      this._glowGfx.fillCircle(0, 0, 14);
+    }
 
     this._arcGfx = scene.add.graphics();
     this._glyph = scene.add.image(0, 0, 'rune_idle');
+    this.add([this._glowGfx, this._arcGfx, this._glyph]);
 
-    // Colored glow behind glyph so special types are clearly visible
-    if (type !== 'regular') {
-      const glowColor = type === 'skillcheck' ? 0xff8800 : 0x2277ff;
-      const glow = scene.add.graphics();
-      glow.fillStyle(glowColor, 0.55);
-      glow.fillCircle(0, 0, 9);
-      this.add(glow);
-    }
-
-    this.add([this._arcGfx, this._glyph]);
-
-    if (type === 'regular') {
+    if (runeType === 'regular') {
       scene.tweens.add({
         targets: this._glyph,
         y: -3, duration: 900, yoyo: true, repeat: -1,
         ease: 'Sine.easeInOut',
       });
+    } else {
+      // Pulse glow for special types
+      scene.tweens.add({
+        targets: this._glowGfx,
+        alpha: 0.3,
+        duration: 700, yoyo: true, repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     }
 
-    if (type === 'skillcheck') {
+    if (runeType === 'skillcheck') {
       this._needleAngle = 0;
       this._needleSpeed = 1.8;
       this._successStart = Math.random() * Math.PI * 2;
@@ -40,18 +48,18 @@ class Rune extends Phaser.GameObjects.Container {
       this.add(this._scGfx);
     }
 
-    if (type === 'multi') {
+    if (runeType === 'multi') {
       this._pressesRequired = 12;
       this._presses = 0;
     }
   }
 
-  get isSkillCheck() { return this.type === 'skillcheck'; }
-  get isMulti()      { return this.type === 'multi'; }
+  get isSkillCheck() { return this.runeType === 'skillcheck'; }
+  get isMulti()      { return this.runeType === 'multi'; }
 
   // ── Regular: hold SPACE ───────────────────────────────────────────────────
   addCharge(dt) {
-    if (this.charged || this.type !== 'regular') return;
+    if (this.charged || this.runeType !== 'regular') return;
     this._charge = Math.min(1, this._charge + dt / 3);
     this._redrawArc(0x88ffcc);
     if (this._charge >= 1) this._complete();
@@ -59,11 +67,10 @@ class Rune extends Phaser.GameObjects.Container {
 
   // ── Multi: mash SPACE ─────────────────────────────────────────────────────
   press() {
-    if (this.charged || this.type !== 'multi') return;
+    if (this.charged || this.runeType !== 'multi') return;
     this._presses++;
     this._charge = this._presses / this._pressesRequired;
     this._redrawArc(0x4499ff);
-    // Bounce feedback
     this.scene.tweens.add({
       targets: this._glyph,
       scaleX: 1.3, scaleY: 1.3,
@@ -74,13 +81,13 @@ class Rune extends Phaser.GameObjects.Container {
 
   // ── Skill check: hit the green zone ──────────────────────────────────────
   updateSkillCheck(dt, playerNear) {
-    if (this.charged || this.type !== 'skillcheck') return;
+    if (this.charged || this.runeType !== 'skillcheck') return;
     if (playerNear) this._needleAngle = (this._needleAngle + this._needleSpeed * dt) % (Math.PI * 2);
     this._redrawSkillCheck(playerNear);
   }
 
   attemptSkillCheck() {
-    if (this.charged || this.type !== 'skillcheck') return;
+    if (this.charged || this.runeType !== 'skillcheck') return;
     const n = ((this._needleAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const s = ((this._successStart % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const e = (s + this._successArc) % (Math.PI * 2);
@@ -91,7 +98,7 @@ class Rune extends Phaser.GameObjects.Container {
       this._complete();
     } else {
       this._glyph.setTint(0xff2222);
-      this.scene.time.delayedCall(220, () => { if (this._glyph) this._glyph.setTint(0xff9900); });
+      this.scene.time.delayedCall(220, () => { if (this._glyph) this._glyph.clearTint(); });
       this._needleSpeed = Math.min(this._needleSpeed + 0.25, 4.0);
     }
   }
@@ -100,8 +107,10 @@ class Rune extends Phaser.GameObjects.Container {
   _complete() {
     this.charged = true;
     this._arcGfx.clear();
+    this._glowGfx.clear();
     this._glyph.setTexture('rune_charged');
     this._glyph.clearTint();
+    this.scene.tweens.killTweensOf(this._glowGfx);
     this.scene.tweens.add({
       targets: this._glyph,
       scaleX: 1.5, scaleY: 1.5,
@@ -158,8 +167,9 @@ class Rune extends Phaser.GameObjects.Container {
   }
 
   destroy() {
-    if (this._arcGfx && this._arcGfx.scene) this._arcGfx.destroy();
-    if (this._scGfx  && this._scGfx.scene)  this._scGfx.destroy();
+    if (this._glowGfx && this._glowGfx.scene) this._glowGfx.destroy();
+    if (this._arcGfx  && this._arcGfx.scene)  this._arcGfx.destroy();
+    if (this._scGfx   && this._scGfx.scene)   this._scGfx.destroy();
     super.destroy();
   }
 }
