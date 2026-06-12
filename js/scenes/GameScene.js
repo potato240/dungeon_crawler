@@ -255,8 +255,9 @@ class GameScene extends Phaser.Scene {
     }
     const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
 
-    // Pick one room to get a lava gap (if large enough)
+    // One rune gets a lava gap, one gets a skill check (can overlap)
     const lavaRoomIdx = Math.floor(Math.random() * count);
+    const skillCheckIdx = Math.floor(Math.random() * count);
 
     for (let i = 0; i < count; i++) {
       const r = eligible[i];
@@ -266,8 +267,7 @@ class GameScene extends Phaser.Scene {
         const gapInfo = this._tryAddLavaGap(r);
         if (gapInfo) { rx = gapInfo.runeX; ry = gapInfo.runeY; }
       }
-      const isSkillCheck = i !== lavaRoomIdx && Math.random() < 0.4;
-      const rune = new Rune(this, rx, ry, isSkillCheck);
+      const rune = new Rune(this, rx, ry, i === skillCheckIdx);
       this._runesGroup.add(rune);
     }
     this._runesTotal = count;
