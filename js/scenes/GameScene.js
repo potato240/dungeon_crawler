@@ -253,12 +253,12 @@ class GameScene extends Phaser.Scene {
       const j = Math.floor(Math.random() * (i + 1));
       [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
-    const count = Math.min(3 + Math.floor(Math.random() * 3), eligible.length);
+    const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
 
-    // Assign special types — each needs count > threshold, indices must differ
+    // Lava is placement only — skill check and multi are assigned independently
     const lavaRoomIdx   = Math.floor(Math.random() * count);
-    const skillCheckIdx = count > 1 ? this._uniqueIdx(count, [lavaRoomIdx]) : -1;
-    const multiIdx      = count > 2 ? this._uniqueIdx(count, [lavaRoomIdx, skillCheckIdx]) : -1;
+    const skillCheckIdx = count > 1 ? Math.floor(Math.random() * count) : -1;
+    const multiIdx      = count > 1 ? this._uniqueIdx(count, [skillCheckIdx]) : -1;
 
     for (let i = 0; i < count; i++) {
       const r = eligible[i];
