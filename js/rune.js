@@ -21,7 +21,7 @@ class Rune extends Phaser.GameObjects.Container {
 
   addCharge(dt) {
     if (this.charged) return;
-    this._charge = Math.min(1, this._charge + dt / 2);
+    this._charge = Math.min(1, this._charge + dt / 3);
     this._redrawArc();
     if (this._charge >= 1) {
       this.charged = true;
