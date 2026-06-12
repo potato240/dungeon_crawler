@@ -269,6 +269,7 @@ class GameScene extends Phaser.Scene {
         if (gapInfo) { rx = gapInfo.runeX; ry = gapInfo.runeY; }
       }
       const type = i === skillCheckIdx ? 'skillcheck' : i === multiIdx ? 'multi' : 'regular';
+      console.log(`Rune ${i}/${count}: type=${type} skillCheckIdx=${skillCheckIdx} multiIdx=${multiIdx}`);
       const rune = new Rune(this, rx, ry, type);
       this._runesGroup.add(rune);
     }
