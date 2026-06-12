@@ -9,6 +9,7 @@ const CONFIG = {
     FLOOR: 2,
     STAIRS: 3,
     PIT: 4,
+    LAVA: 5,
   },
 
   CHARGE_REQUIRED: 80,

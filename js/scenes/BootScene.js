@@ -53,7 +53,23 @@ class BootScene extends Phaser.Scene {
     tg.fillRect(T * 4 + 1, 1, 1, T - 2);
     tg.fillRect(T * 4 + T - 2, 1, 1, T - 2);
 
-    tg.generateTexture('tiles', T * 5, T);
+    // Slot 5: lava
+    tg.fillStyle(0x1a0200);
+    tg.fillRect(T * 5, 0, T, T);
+    tg.fillStyle(0x8b1500);
+    tg.fillRect(T * 5 + 1, 1, T - 2, T - 2);
+    // lava glow blobs
+    tg.fillStyle(0xff4400);
+    tg.fillRect(T * 5 + 2, 2, T - 4, 4);
+    tg.fillRect(T * 5 + 2, T - 6, T - 4, 4);
+    tg.fillStyle(0xff8800);
+    tg.fillRect(T * 5 + 4, 4, 4, 4);
+    tg.fillRect(T * 5 + T - 8, T - 8, 4, 4);
+    tg.fillStyle(0xffcc00, 0.8);
+    tg.fillRect(T * 5 + 6, 6, 2, 2);
+    tg.fillRect(T * 5 + T - 8, 5, 2, 2);
+
+    tg.generateTexture('tiles', T * 6, T);
     tg.destroy();
 
     // Player

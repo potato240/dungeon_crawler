@@ -172,12 +172,13 @@ class GameScene extends Phaser.Scene {
     // Pit check
     const currentTile = this.groundLayer?.getTileAtWorldXY(this.player.x, this.player.y);
     if (currentTile) {
-      if (currentTile.index === CONFIG.TILES.PIT && !this.player.dashing && this.player.postDashGrace <= 0) {
+      const { PIT, LAVA, FLOOR, STAIRS } = CONFIG.TILES;
+      if ((currentTile.index === PIT || currentTile.index === LAVA) && !this.player.dashing && this.player.postDashGrace <= 0) {
         this.player.takeDamage(20);
         this.player.setPosition(this._lastSafeX, this._lastSafeY);
         this.player.setVelocity(0, 0);
-        this.showMessage('Watch the gaps! SHIFT to dash across.');
-      } else if (currentTile.index === CONFIG.TILES.FLOOR || currentTile.index === CONFIG.TILES.STAIRS) {
+        this.showMessage(currentTile.index === LAVA ? 'Lava! SHIFT to dash across.' : 'Watch the gaps! SHIFT to dash across.');
+      } else if (currentTile.index === FLOOR || currentTile.index === STAIRS) {
         this._lastSafeX = this.player.x;
         this._lastSafeY = this.player.y;
       }
@@ -187,7 +188,7 @@ class GameScene extends Phaser.Scene {
     this.enemies.getChildren().forEach(e => {
       if (!e.active) return;
       const t = this.groundLayer?.getTileAtWorldXY(e.x, e.y);
-      if (t && t.index === CONFIG.TILES.PIT) e.takeDamage(999);
+      if (t && (t.index === CONFIG.TILES.PIT || t.index === CONFIG.TILES.LAVA)) e.takeDamage(999);
     });
 
     // Item pickup (distance check)
@@ -251,10 +252,18 @@ class GameScene extends Phaser.Scene {
       [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
     const count = Math.min(1 + Math.floor(Math.random() * 5), eligible.length);
+
+    // Pick one room to get a lava gap (if large enough)
+    const lavaRoomIdx = Math.floor(Math.random() * count);
+
     for (let i = 0; i < count; i++) {
       const r = eligible[i];
-      const rx = (r.cx) * T + T / 2;
-      const ry = (r.cy) * T + T / 2;
+      let rx = r.cx * T + T / 2;
+      let ry = r.cy * T + T / 2;
+      if (i === lavaRoomIdx) {
+        const gapInfo = this._tryAddLavaGap(r);
+        if (gapInfo) { rx = gapInfo.runeX; ry = gapInfo.runeY; }
+      }
       const rune = new Rune(this, rx, ry);
       this._runesGroup.add(rune);
     }
@@ -304,6 +313,44 @@ class GameScene extends Phaser.Scene {
         rune.addCharge(dt);
       }
     });
+  }
+
+  _tryAddLavaGap(room) {
+    const T = CONFIG.TILE_SIZE;
+    const LAVA = CONFIG.TILES.LAVA;
+
+    // Try vertical lava strip (3 columns wide, full room height)
+    // Gap starts one tile right of center so corridor entry at cx is safe
+    if (room.w >= 9) {
+      const gapX = room.cx + 1;
+      if (gapX + 3 <= room.x + room.w - 2) {
+        for (let x = gapX; x < gapX + 3; x++) {
+          for (let y = room.y; y < room.y + room.h; y++) {
+            this.groundLayer.putTileAt(LAVA, x, y);
+          }
+        }
+        const runeX = Math.floor((gapX + 3 + room.x + room.w - 1) / 2) * T + T / 2;
+        const runeY = room.cy * T + T / 2;
+        return { runeX, runeY };
+      }
+    }
+
+    // Try horizontal lava strip (3 rows wide, full room width)
+    if (room.h >= 9) {
+      const gapY = room.cy + 1;
+      if (gapY + 3 <= room.y + room.h - 2) {
+        for (let y = gapY; y < gapY + 3; y++) {
+          for (let x = room.x; x < room.x + room.w; x++) {
+            this.groundLayer.putTileAt(LAVA, x, y);
+          }
+        }
+        const runeX = room.cx * T + T / 2;
+        const runeY = Math.floor((gapY + 3 + room.y + room.h - 1) / 2) * T + T / 2;
+        return { runeX, runeY };
+      }
+    }
+
+    return null;
   }
 
   // ── Hazard rooms ─────────────────────────────────────────────────────────
