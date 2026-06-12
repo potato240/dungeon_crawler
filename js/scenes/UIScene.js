@@ -57,6 +57,13 @@ class UIScene extends Phaser.Scene {
       color: '#88ffcc', stroke: '#000000', strokeThickness: 3,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(102).setVisible(isRuneMode);
 
+    // Stairs arrow (rune mode only) — drawn once, repositioned via event
+    this.stairsArrow = this.add.graphics().setDepth(110).setVisible(false);
+    this.stairsArrow.fillStyle(0xffee44, 1);
+    this.stairsArrow.fillTriangle(-12, -8, -12, 8, 10, 0);
+    this.stairsArrow.lineStyle(2, 0xffffff, 0.8);
+    this.stairsArrow.strokeTriangle(-12, -8, -12, 8, 10, 0);
+
     // Message bar at bottom
     this.msgText = this.add.text(W / 2, this.cameras.main.height - 8, '', {
       fontSize: '11px', fontFamily: 'monospace',
@@ -75,6 +82,7 @@ class UIScene extends Phaser.Scene {
     game.events.on('show-message',   this._onShowMessage,  this);
     game.events.on('charge-updated', this._onChargeUpdate, this);
     game.events.on('rune-progress',  this._onRuneProgress,  this);
+    game.events.on('stairs-arrow',   this._onStairsArrow,   this);
   }
 
   _drawHpBar(frac) {
@@ -124,6 +132,23 @@ class UIScene extends Phaser.Scene {
   _onChargeUpdate(charge) { this._drawChargeBar(charge); }
   _onRuneProgress(powered, total) {
     if (this.runeLabel) this.runeLabel.setText(`Runes ${powered}/${total}`);
+  }
+
+  _onStairsArrow({ angle, onScreen }) {
+    if (!this.stairsArrow) return;
+    if (onScreen) { this.stairsArrow.setVisible(false); return; }
+    const W = this.cameras.main.width, H = this.cameras.main.height;
+    const margin = 30;
+    const halfW = W / 2 - margin, halfH = H / 2 - margin;
+    const cosA = Math.cos(angle), sinA = Math.sin(angle);
+    const s = Math.min(
+      Math.abs(cosA) > 0.001 ? halfW / Math.abs(cosA) : Infinity,
+      Math.abs(sinA) > 0.001 ? halfH / Math.abs(sinA) : Infinity
+    );
+    this.stairsArrow.setVisible(true);
+    this.stairsArrow.x = W / 2 + cosA * s;
+    this.stairsArrow.y = H / 2 + sinA * s;
+    this.stairsArrow.rotation = angle;
   }
   _onPlayerHurt(player) { this._onUpdateUi(player); }
   _onPlayerHealed(player) { this._onUpdateUi(player); }

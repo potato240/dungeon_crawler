@@ -138,7 +138,7 @@ class GameScene extends Phaser.Scene {
       this._runesGroup.clear(false, false);
     }
     if (this._stairLockGfx) { this._stairLockGfx.destroy(); this._stairLockGfx = null; }
-    if (this._stairsArrow) { this._stairsArrow.destroy(); this._stairsArrow = null; }
+    this._showStairsArrow = false;
     this.events.off('rune-charged', this._onRuneCharged, this);
 
     this._stopHazard();
@@ -301,45 +301,21 @@ class GameScene extends Phaser.Scene {
     if (this._stairLockGfx) { this._stairLockGfx.destroy(); this._stairLockGfx = null; }
     this.cameras.main.flash(300, 80, 255, 180);
     this.showMessage('All runes powered! The stairs are open!');
-
-    // Stairs arrow indicator
-    this._stairsArrow = this.add.graphics().setScrollFactor(0).setDepth(40);
-    this._stairsArrow.fillStyle(0xffee44, 1);
-    this._stairsArrow.fillTriangle(-10, -7, -10, 7, 8, 0);
-    this._stairsArrow.lineStyle(1, 0xffffff, 0.7);
-    this._stairsArrow.strokeTriangle(-10, -7, -10, 7, 8, 0);
+    this._showStairsArrow = true;
   }
 
   _updateStairsArrow() {
-    if (!this._stairsArrow) return;
+    if (!this._showStairsArrow) return;
     const T = CONFIG.TILE_SIZE;
     const cam = this.cameras.main;
     const sx = this.stairsTile.x * T + T / 2;
     const sy = this.stairsTile.y * T + T / 2;
     const angle = Math.atan2(sy - this.player.y, sx - this.player.x);
-
-    // Convert stairs world pos to screen pos
     const screenX = (sx - cam.scrollX) * cam.zoom;
     const screenY = (sy - cam.scrollY) * cam.zoom;
     const W = cam.width, H = cam.height;
     const onScreen = screenX > 20 && screenX < W - 20 && screenY > 20 && screenY < H - 20;
-    if (onScreen) {
-      this._stairsArrow.setVisible(false);
-      return;
-    }
-    this._stairsArrow.setVisible(true);
-
-    const margin = 30;
-    const halfW = W / 2 - margin;
-    const halfH = H / 2 - margin;
-    const cosA = Math.cos(angle), sinA = Math.sin(angle);
-    const s = Math.min(
-      Math.abs(cosA) > 0.001 ? halfW / Math.abs(cosA) : Infinity,
-      Math.abs(sinA) > 0.001 ? halfH / Math.abs(sinA) : Infinity
-    );
-    this._stairsArrow.x = W / 2 + cosA * s;
-    this._stairsArrow.y = H / 2 + sinA * s;
-    this._stairsArrow.rotation = angle;
+    this.events.emit('stairs-arrow', { angle, onScreen });
   }
 
   _updateRuneCharging(delta) {
