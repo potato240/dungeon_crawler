@@ -10,18 +10,10 @@ class Rune extends Phaser.GameObjects.Container {
     this._charge = 0;
 
     this._glowGfx = scene.add.graphics();
-    if (runeType === 'skillcheck') {
-      this._glowGfx.fillStyle(0xff8800, 1);
-      this._glowGfx.fillCircle(0, 0, 5);
-    } else if (runeType === 'multi') {
-      this._glowGfx.fillStyle(0x2277ff, 1);
-      this._glowGfx.fillCircle(0, 0, 5);
-    } else {
-      this._glowGfx.fillStyle(0xaa44ff, 1);
-      this._glowGfx.fillCircle(0, 0, 5);
-    }
     this._arcGfx = scene.add.graphics();
     this._glyph = scene.add.image(0, 0, 'rune_idle');
+    if (runeType === 'skillcheck') this._glyph.setTint(0xff8800);
+    else if (runeType === 'multi') this._glyph.setTint(0x2277ff);
     this.add([this._glowGfx, this._arcGfx, this._glyph]);
 
     scene.tweens.add({
